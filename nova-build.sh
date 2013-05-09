@@ -13,13 +13,14 @@ CENT_IMAGE="ebe9d6c3-3d83-4aba-849e-5211302582df"
 #UBUN_IMAGE="cab803a5-c8ed-4c41-9113-20e5cd0a04c3" # chef10
 UBUN_IMAGE="dcff35db-55d8-452e-8e2e-ff7342e6c25b" # chef11
 BANJONET="59357aab-2ef1-4937-8baa-7a3bef1333a6"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 OS=${OS:-"ubun"}
 
 FLAVOR_1G_ID=${FLAVOR_1G_ID:-3}
 FLAVOR_2G_ID=${FLAVOR_2G_ID:-4}
 FLAVOR_4G_ID=${FLAVOR_4G_ID:-5}
-SSH_OPTS="-q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/.ssh/cloud_id_rsa "
+SSH_OPTS="-q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /Users/darren.birkett/.ssh/cloud_id_rsa "
 KNIFE_CONFIG=${KNIFE_CONFIG:-"~/.chef/knife.rb"}
 
 COMPUTE_NODE1_NAME=${PROXY_NODE_NAME:-"${OS}-compute1.rcbops.me"}
@@ -35,6 +36,7 @@ PACKAGE_COMPONENT=${PACKAGE_COMPONENT:-folsom}
 DELETE_SERVER=false
 ENVIRONMENT=''
 CHEF=''
+CHEF_CLIENT='chef-client'
 
 
 
@@ -55,6 +57,7 @@ while [ $# -gt 0 ] ; do
         -r) RUNLIST=$2 ; shift 2 ;;
         -e) ENVIRONMENT=$2 ; shift 2 ;;
         -v) CHEF=$2 ; shift 2 ;;
+        -l) CHEF_CLIENT='chef-client -l debug' ; shift ;;
         *) shift ;;
     esac
 done
@@ -134,14 +137,14 @@ function run_chef {
                 ssh $SSH_OPTS root@${IP} sed -i -e '/Defaults.*requiretty/s/^/#/g' /etc/sudoers
             fi
             # do chef-client first run
-            ssh $SSH_OPTS root@${IP} chef-client
+            ssh $SSH_OPTS root@${IP} ${CHEF_CLIENT}
             return 0
         fi
 
         # set environment
         set_env
         #run chef proper
-        ssh $SSH_OPTS root@${IP} chef-client || true
+        ssh $SSH_OPTS root@${IP} ${CHEF_CLIENT} || true
     done
     return 0
 }
@@ -172,7 +175,7 @@ function build_server {
     done
     echo
     echo "built server in $count seconds"
-    echo $count >> ./server_build_timings
+    echo $count >> $DIR/server_build_timings
 }
 
 function remove_runlist {
@@ -211,7 +214,7 @@ EOF' || true
                 ssh $SSH_OPTS root@${IP} sed -i -e '/Defaults.*requiretty/s/^/#/g' /etc/sudoers
             fi
             # do chef-client first run
-            ssh $SSH_OPTS root@${IP} chef-client
+            ssh $SSH_OPTS root@${IP} ${CHEF_CLIENT}
             return 0
         fi
     done
