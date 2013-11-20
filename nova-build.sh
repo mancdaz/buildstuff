@@ -9,10 +9,11 @@ if [ -f  ~/.nova-opencloud-uk ]; then
 fi
 
 RHEL_IMAGE="a2723606-19bc-43db-900c-2b1f40423883"
-CENT_IMAGE="ebe9d6c3-3d83-4aba-849e-5211302582df"
-#UBUN_IMAGE="cab803a5-c8ed-4c41-9113-20e5cd0a04c3" # chef10
-UBUN_IMAGE="dcff35db-55d8-452e-8e2e-ff7342e6c25b" # chef11
+CENT_IMAGE="bd7de1ba-79a3-42ff-8ebc-53eefe582ffe"
+UBUN_IMAGE="8dc2da30-7467-4673-97fd-5cc0d8164cfb" # chef11
 BANJONET="59357aab-2ef1-4937-8baa-7a3bef1333a6"
+BANJONET2="9e0b05b4-1a9f-49ba-bc71-1104ad51e0b5"
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 OS=${OS:-"ubun"}
@@ -32,7 +33,7 @@ BUILD_NEW=false
 FULL=false
 EMPTY=false
 RUN_CHEF=false
-PACKAGE_COMPONENT=${PACKAGE_COMPONENT:-folsom}
+PACKAGE_COMPONENT=${PACKAGE_COMPONENT:-grizzly}
 DELETE_SERVER=false
 ENVIRONMENT=''
 CHEF=''
@@ -92,7 +93,7 @@ echo "using release:       ${PACKAGE_COMPONENT}"
 host_list=( $CONTROLLER_NODE_NAME )
 
 
-if [ "${PACKAGE_COMPONENT}" != "essex-final" ] && [ "${PACKAGE_COMPONENT}" != "folsom" ]; then
+if [ "${PACKAGE_COMPONENT}" != "grizzly" ] && [ "${PACKAGE_COMPONENT}" != "folsom" ]; then
     echo "you didn't choose a valid openstack release: essex or folsom please"
     exit 1
 fi
@@ -136,6 +137,9 @@ function run_chef {
             if [ ${OS} = "rhel" ]; then
                 ssh $SSH_OPTS root@${IP} sed -i -e '/Defaults.*requiretty/s/^/#/g' /etc/sudoers
             fi
+            # ensure we can contact the chef-server
+            ssh $SSH_OPTS root@${IP} echo "162.13.94.31 chef-server" >> /etc/hosts
+            ssh $SSH_OPTS root@${IP} sed -i -e '/162.13.94.31/chef-server/g' /etc/chef/client.rb
             # do chef-client first run
             ssh $SSH_OPTS root@${IP} ${CHEF_CLIENT}
             return 0
@@ -167,7 +171,7 @@ function build_server {
 
     local count=0
     echo "Booting node: ${CONTROLLER_NODE_NAME}"
-    nova boot --image ${CONTROLLER_IMAGE} --flavor ${FLAVOR_2G_ID} --nic net-id=${BANJONET} ${CONTROLLER_NODE_NAME}
+    nova boot --image ${CONTROLLER_IMAGE} --flavor ${FLAVOR_2G_ID} --nic net-id=${BANJONET} --nic net-id=${BANJONET2} ${CONTROLLER_NODE_NAME}
     while [ "$(nova show ${CONTROLLER_NODE_NAME}|grep status|cut -d'|' -f3|sed -e 's/ //g')" != "ACTIVE" ] ; do
         echo -n "."
         sleep 10
@@ -175,7 +179,7 @@ function build_server {
     done
     echo
     echo "built server in $count seconds"
-    echo $count >> $DIR/server_build_timings
+    echo $count >> /Users/darren.birkett/working/mancdaz_clones/buildstuff//server_build_timings
 }
 
 function remove_runlist {
